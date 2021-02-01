@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "By using this software, you agree that if you learn the song you're about to get MIDI from, \
+you WILL send donate to author of the arrangement, if you can afford it."
+
 OFFSET_TOP_DROP=5
 PIXELS_TOP_GET=1
 EXTRACT_FRAMES_PER_SECOND=15
