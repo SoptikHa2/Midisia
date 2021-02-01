@@ -1,0 +1,13 @@
+[package]
+name = "Midisia"
+version = "0.1.0"
+authors = ["Petr Šťastný <petr@soptik.tech>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+midi_file = "0.0.1"
+png = "0.16.8"
+
