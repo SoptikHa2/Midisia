@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use anyhow::Result;
 use png::{ColorType, Decoder};
 use std::convert::TryInto;
-use std::fmt::{Debug, Formatter};
+use std::fmt::Debug;
 use std::fs::File;
 use std::path;
 use std::str::FromStr;
@@ -99,8 +99,9 @@ impl<'a> ColorMatch<'a> {
             let column_idx = idx % loaded_image.width;
             colors_per_column[column_idx].push(*pixel);
         }
-        let average_colors_per_column =
-            colors_per_column.iter().map(|colors| averageColors(colors));
+        let average_colors_per_column = colors_per_column
+            .iter()
+            .map(|colors| average_colors(colors));
 
         // For each column, return corresponding matched color
         let average_colors_per_column_with_paired_distances_to_colors: Vec<Vec<i32>> =
@@ -121,7 +122,7 @@ impl<'a> ColorMatch<'a> {
                 .map(|distances| distances.iter().enumerate())
                 .map(|distances_with_indexes| {
                     distances_with_indexes
-                        .min_by(|(idx, distance), (idx2, distance2)| distance.cmp(distance2))
+                        .min_by(|(_idx, distance), (_idx2, distance2)| distance.cmp(distance2))
                         .unwrap()
                         .0
                 })
@@ -156,8 +157,9 @@ fn load_image(path: &path::PathBuf) -> Result<LoadedImageData> {
         ColorType::RGBA => img_data
             .iter()
             .enumerate()
-            .filter(|(idx, item)| idx % 4 != 0 || *idx == 0)
-            .map(|(idx, item)| *item)
+            // Filter out alpha values
+            .filter(|(idx, _item)| idx % 4 != 0 || *idx == 0)
+            .map(|(_idx, item)| *item)
             .collect(),
         ColorType::Grayscale => {
             let mut vec = Vec::with_capacity(img_data.len() * 3);
@@ -190,7 +192,7 @@ fn load_image(path: &path::PathBuf) -> Result<LoadedImageData> {
     })
 }
 
-fn averageColors(colors: &[(u8, u8, u8)]) -> (u8, u8, u8) {
+fn average_colors(colors: &[(u8, u8, u8)]) -> (u8, u8, u8) {
     let mut r: u32 = 0;
     let mut g: u32 = 0;
     let mut b: u32 = 0;
