@@ -62,7 +62,10 @@ pub struct ColorMatch<'a> {
     data: Vec<&'a ColorKind>,
 }
 impl<'a> ColorMatch<'a> {
-    fn load_from_file(path: &path::PathBuf, color_collection: &'a Vec<ColorKind>) -> Result<Self> {
+    pub fn load_from_file(
+        path: &path::PathBuf,
+        color_collection: &'a Vec<ColorKind>,
+    ) -> Result<Self> {
         if color_collection.len() == 0 {
             return Err(anyhow!("Color collection is empty."));
         }
