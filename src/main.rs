@@ -1,4 +1,6 @@
 mod colormatch;
+mod tests;
+
 use crate::colormatch::{ColorKind, ColorMatch};
 use anyhow::anyhow;
 use std::env;
@@ -37,6 +39,10 @@ fn main() {
     }
 
     let color_matches = recognize_colors_in_files(&predefined_colors, &image_paths);
+
+    for color_match in color_matches {
+        println!("{:?}", color_match);
+    }
 }
 
 fn recognize_colors_in_files<'a>(

@@ -2,13 +2,29 @@ use anyhow::anyhow;
 use anyhow::Result;
 use png::{ColorType, Decoder};
 use std::convert::TryInto;
+use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::path;
 use std::str::FromStr;
 
+#[derive(Debug)]
 pub enum ColorKind {
     BackgroundColor((u8, u8, u8)),
     ForegroundColor((u8, u8, u8)),
+}
+impl PartialEq for ColorKind {
+    fn eq(&self, other: &Self) -> bool {
+        match self {
+            Self::BackgroundColor((r, g, b)) => match other {
+                Self::ForegroundColor(_) => false,
+                Self::BackgroundColor((or, og, ob)) => r == or && g == og && b == ob,
+            },
+            Self::ForegroundColor((r, g, b)) => match other {
+                Self::BackgroundColor(_) => false,
+                Self::ForegroundColor((or, og, ob)) => r == or && g == og && b == ob,
+            },
+        }
+    }
 }
 /// Expected format: bR:G:B for background color or
 /// R:G:B for foreground color
@@ -23,7 +39,9 @@ impl FromStr for ColorKind {
         let colon_idx = str_to_load.find(':');
         if let Some(colon_idx) = colon_idx {
             let red: u8 = str_to_load[0..colon_idx].parse()?;
-            let second_colon_idx = str_to_load[colon_idx + 1..].find(':');
+            let second_colon_idx = str_to_load[colon_idx + 1..]
+                .find(':')
+                .map(|val| val + colon_idx + 1);
             if let Some(second_colon_idx) = second_colon_idx {
                 let green: u8 = str_to_load[colon_idx + 1..second_colon_idx].parse()?;
                 let blue: u8 = str_to_load[second_colon_idx + 1..].parse()?;
@@ -38,17 +56,17 @@ impl FromStr for ColorKind {
     }
 }
 impl ColorKind {
-    fn get_distance_to_color(&self, color_to_compare: (u8, u8, u8)) -> i16 {
+    fn get_distance_to_color(&self, color_to_compare: (u8, u8, u8)) -> i32 {
         let self_color: (u8, u8, u8) = match *self {
             Self::BackgroundColor(c) => c,
             Self::ForegroundColor(c) => c,
         };
-        let (r1, g1, b1): (i16, i16, i16) = (
+        let (r1, g1, b1): (i32, i32, i32) = (
             self_color.0.into(),
             self_color.1.into(),
             self_color.2.into(),
         );
-        let (r2, g2, b2): (i16, i16, i16) = (
+        let (r2, g2, b2): (i32, i32, i32) = (
             color_to_compare.0.into(),
             color_to_compare.1.into(),
             color_to_compare.2.into(),
@@ -58,6 +76,7 @@ impl ColorKind {
     }
 }
 
+#[derive(Debug)]
 pub struct ColorMatch<'a> {
     data: Vec<&'a ColorKind>,
 }
@@ -73,13 +92,18 @@ impl<'a> ColorMatch<'a> {
         let loaded_image = load_image(path)?;
 
         // For each column, average the colors
-        let average_colors_per_column = loaded_image
-            .data
-            .chunks(loaded_image.width.try_into()?)
-            .map(|chunk| averageColors(chunk));
+        let mut colors_per_column: Vec<Vec<(u8, u8, u8)>> = (0..loaded_image.width)
+            .map(|_| Vec::with_capacity(loaded_image.height))
+            .collect();
+        for (idx, pixel) in loaded_image.data.iter().enumerate() {
+            let column_idx = idx % loaded_image.width;
+            colors_per_column[column_idx].push(*pixel);
+        }
+        let average_colors_per_column =
+            colors_per_column.iter().map(|colors| averageColors(colors));
 
         // For each column, return corresponding matched color
-        let average_colors_per_column_with_paired_distances_to_colors: Vec<Vec<i16>> =
+        let average_colors_per_column_with_paired_distances_to_colors: Vec<Vec<i32>> =
             average_colors_per_column
                 .map(|color_in_column: (u8, u8, u8)| {
                     color_collection
@@ -87,7 +111,7 @@ impl<'a> ColorMatch<'a> {
                         .map(|color_in_collection| {
                             color_in_collection.get_distance_to_color(color_in_column)
                         })
-                        .collect::<Vec<i16>>()
+                        .collect::<Vec<i32>>()
                 })
                 .collect();
 
@@ -115,8 +139,8 @@ impl<'a> ColorMatch<'a> {
 }
 
 struct LoadedImageData {
-    width: u32,
-    height: u32,
+    width: usize,
+    height: usize,
     data: Vec<(u8, u8, u8)>,
 }
 impl LoadedImageData {}
@@ -160,8 +184,8 @@ fn load_image(path: &path::PathBuf) -> Result<LoadedImageData> {
         .collect();
 
     Ok(LoadedImageData {
-        width: info.width,
-        height: info.height,
+        width: info.width.try_into()?,
+        height: info.height.try_into()?,
         data,
     })
 }
