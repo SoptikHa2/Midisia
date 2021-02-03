@@ -17,6 +17,7 @@ use std::path::PathBuf;
 /// - Colors separated by commas (b0:0:0,255:0:0)
 /// - Leftmost key (A0 .. C8, C4 is the "default" C)
 /// - Rightmost key
+/// - Output filename
 /// - Filenames of images to process (repeatable)
 ///
 /// Midi numbers:
@@ -26,6 +27,8 @@ use std::path::PathBuf;
 /// D4          | 62
 /// C5          | 72
 /// C6          | 84
+///
+/// Example: cargo run -- b0:0:0,255:0:0 A2 C7 output.midi *.cropped > debug.ppm
 fn main() {
     let mut args = env::args();
     // Skip 0th argument - binary name
@@ -49,6 +52,12 @@ fn main() {
     let rightmost_midi =
         note_name_to_midi_id(&args.next().expect("Expected rightmost midi key ID"))
             .expect("Failed to parse rightmost key");
+    // Load output filepath
+    let output_filepath: PathBuf = args
+        .next()
+        .expect("Expected output filename")
+        .parse()
+        .expect("Expected valid output path");
     // Load image files
     let mut image_paths: Vec<PathBuf> = Vec::new();
     for image_path in args {
@@ -61,7 +70,14 @@ fn main() {
 
     let color_matches = recognize_colors_in_files(&predefined_colors, &image_paths);
 
-    debug_print_color_recognition_to_netpbm(&color_matches);
+    //debug_print_color_recognition_to_netpbm(&color_matches);
+
+    midi::create_midi_file(
+        output_filepath,
+        leftmost_midi,
+        rightmost_midi,
+        &color_matches,
+    );
 }
 
 fn recognize_colors_in_files<'a>(
