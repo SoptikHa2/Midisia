@@ -78,7 +78,7 @@ impl ColorKind {
 
 #[derive(Debug)]
 pub struct ColorMatch<'a> {
-    data: Vec<&'a ColorKind>,
+    pub(crate) data: Vec<&'a ColorKind>,
 }
 impl<'a> ColorMatch<'a> {
     pub fn load_from_file(

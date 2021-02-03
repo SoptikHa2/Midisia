@@ -1,7 +1,9 @@
 mod colormatch;
+mod midi;
 mod tests;
 
 use crate::colormatch::{ColorKind, ColorMatch};
+use crate::midi::note_name_to_midi_id;
 use std::env;
 use std::path::PathBuf;
 
@@ -13,8 +15,8 @@ use std::path::PathBuf;
 ///
 /// Arguments:
 /// - Colors separated by commas (b0:0:0,255:0:0)
-/// - Midi number of leftmost key
-/// - Midi number of rightmost key
+/// - Leftmost key (A0 .. C8, C4 is the "default" C)
+/// - Rightmost key
 /// - Filenames of images to process (repeatable)
 ///
 /// Midi numbers:
@@ -42,16 +44,11 @@ fn main() {
         return;
     }
     // Load midi
-    let leftmost_midi: usize = args
-        .next()
-        .expect("Expected leftmost midi key ID")
-        .parse()
-        .expect("Expected unsigned integer as leftmost midi key ID");
-    let rightmost_midi: usize = args
-        .next()
-        .expect("Expected rightmost midi key ID")
-        .parse()
-        .expect("Expected unsigned integer as rightmost midi key ID");
+    let leftmost_midi = note_name_to_midi_id(&args.next().expect("Expected leftmost midi key ID"))
+        .expect("Failed to parse leftmost key");
+    let rightmost_midi =
+        note_name_to_midi_id(&args.next().expect("Expected rightmost midi key ID"))
+            .expect("Failed to parse rightmost key");
     // Load image files
     let mut image_paths: Vec<PathBuf> = Vec::new();
     for image_path in args {
@@ -64,9 +61,7 @@ fn main() {
 
     let color_matches = recognize_colors_in_files(&predefined_colors, &image_paths);
 
-    for color_match in color_matches {
-        println!("{:?}", color_match);
-    }
+    debug_print_color_recognition_to_netpbm(&color_matches);
 }
 
 fn recognize_colors_in_files<'a>(
@@ -79,4 +74,24 @@ fn recognize_colors_in_files<'a>(
         .filter(|res| res.is_ok())
         .map(|res| res.unwrap())
         .collect()
+}
+
+fn debug_print_color_recognition_to_netpbm(color_matches: &Vec<ColorMatch>) {
+    println!("P1");
+    let height = color_matches.len();
+    let width = color_matches.first().unwrap().data.len();
+    println!("{} {}", width, height);
+    for line in color_matches {
+        let line = &line.data;
+        for record in line {
+            print!(
+                "{}",
+                match **record {
+                    ColorKind::ForegroundColor(_) => 1,
+                    ColorKind::BackgroundColor(_) => 0,
+                }
+            );
+        }
+        println!();
+    }
 }
